@@ -308,6 +308,7 @@ async function loadDashboard() {
         }
         
         const data = await response.json();
+        console.log('Dashboard data received:', data);
         
         // Update total checks
         document.getElementById('totalChecks').textContent = data.totalChecks || 0;
@@ -315,7 +316,17 @@ async function loadDashboard() {
         // Update recent checks
         const recentChecksList = document.getElementById('recentChecksList');
         if (data.recentChecks && data.recentChecks.length > 0) {
-            recentChecksList.innerHTML = data.recentChecks.map(check => `
+            recentChecksList.innerHTML = data.recentChecks.map(check => {
+                // Convert database integers (0/1) to booleans explicitly
+                const spfExists = Boolean(check.spf_exists);
+                const dmarcExists = Boolean(check.dmarc_exists);
+                const dkimBh = Boolean(check.dkim_bh);
+                const dkimBa = Boolean(check.dkim_ba);
+                const dkimBa2 = Boolean(check.dkim_ba2);
+                const dkimHf = Boolean(check.dkim_hf);
+                const dkimHf2 = Boolean(check.dkim_hf2);
+                
+                return `
                 <div class="check-item-detailed">
                     <div class="check-header">
                         <span class="check-domain">${escapeHtml(check.domain)}</span>
@@ -325,29 +336,30 @@ async function loadDashboard() {
                         <div class="result-grid">
                             <div class="result-box">
                                 <span class="result-label">SPF Record</span>
-                                <span class="result-value ${check.spf_exists ? 'success' : 'fail'}">${check.spf_exists ? 'Yes' : 'No'}</span>
+                                <span class="result-value ${spfExists ? 'success' : 'fail'}">${spfExists ? 'Yes' : 'No'}</span>
                             </div>
                             <div class="result-box">
                                 <span class="result-label">DMARC Record</span>
-                                <span class="result-value ${check.dmarc_exists ? 'success' : 'fail'}">${check.dmarc_exists ? 'Yes' : 'No'}</span>
-                                ${check.dmarc_policy ? `<span class="result-detail">${check.dmarc_policy}</span>` : ''}
+                                <span class="result-value ${dmarcExists ? 'success' : 'fail'}">${dmarcExists ? 'Yes' : 'No'}</span>
+                                ${check.dmarc_policy ? `<span class="result-detail">${escapeHtml(check.dmarc_policy)}</span>` : ''}
                             </div>
                         </div>
                         <div class="dkim-section">
                             <span class="result-label">DKIM Selectors</span>
                             <div class="dkim-grid">
-                                <span class="dkim-item ${check.dkim_bh ? 'success' : 'fail'}">bh: ${check.dkim_bh ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${check.dkim_ba ? 'success' : 'fail'}">ba: ${check.dkim_ba ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${check.dkim_ba2 ? 'success' : 'fail'}">ba2: ${check.dkim_ba2 ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${check.dkim_hf ? 'success' : 'fail'}">hf: ${check.dkim_hf ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${check.dkim_hf2 ? 'success' : 'fail'}">hf2: ${check.dkim_hf2 ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${dkimBh ? 'success' : 'fail'}">bh: ${dkimBh ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${dkimBa ? 'success' : 'fail'}">ba: ${dkimBa ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${dkimBa2 ? 'success' : 'fail'}">ba2: ${dkimBa2 ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${dkimHf ? 'success' : 'fail'}">hf: ${dkimHf ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${dkimHf2 ? 'success' : 'fail'}">hf2: ${dkimHf2 ? 'Present' : 'Missing'}</span>
                             </div>
                         </div>
                         ${check.spf_record ? `<div class="spf-record-display"><strong>SPF Record:</strong><br><code class="small-code">${escapeHtml(check.spf_record)}</code></div>` : ''}
-                        ${check.ip_address ? `<div class="ip-display"><strong>Checked from IP:</strong> ${escapeHtml(check.ip_address)}</div>` : ''}
+                        ${check.ip_address && check.ip_address !== 'unknown' ? `<div class="ip-display"><strong>Checked from IP:</strong> ${escapeHtml(check.ip_address)}</div>` : ''}
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         } else {
             recentChecksList.innerHTML = '<p>No checks yet</p>';
         }
