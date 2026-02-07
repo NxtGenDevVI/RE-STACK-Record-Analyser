@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
   domain TEXT NOT NULL,
   timestamp TEXT NOT NULL,
   ip_address TEXT,
@@ -12,9 +13,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
   dkim_hf INTEGER,
   dkim_hf2 INTEGER,
   dmarc_exists INTEGER,
-  dmarc_policy TEXT
+  dmarc_policy TEXT,
+  score INTEGER
 );
 
+CREATE INDEX IF NOT EXISTS idx_email ON audit_log(email);
 CREATE INDEX IF NOT EXISTS idx_domain ON audit_log(domain);
 CREATE INDEX IF NOT EXISTS idx_timestamp ON audit_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_ip_address ON audit_log(ip_address);

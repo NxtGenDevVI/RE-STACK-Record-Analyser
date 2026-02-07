@@ -1,31 +1,33 @@
 const CLOUDFLARE_DNS_API = 'https://cloudflare-dns.com/dns-query';
 const BACKEND_API = 'https://dns-checker-api.restack.workers.dev';
 
-const domainInput = document.getElementById('domainInput');
+const emailInput = document.getElementById('emailInput');
 const checkButton = document.getElementById('checkButton');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const errorMessage = document.getElementById('errorMessage');
 const results = document.getElementById('results');
 
 checkButton.addEventListener('click', handleCheck);
-domainInput.addEventListener('keypress', (e) => {
+emailInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         handleCheck();
     }
 });
 
 async function handleCheck() {
-    const domain = domainInput.value.trim().toLowerCase();
+    const email = emailInput.value.trim().toLowerCase();
     
-    if (!domain) {
-        showError('Please enter a domain name');
+    if (!email) {
+        showError('Please enter an email address');
         return;
     }
 
-    if (!isValidDomain(domain)) {
-        showError('Please enter a valid domain name');
+    if (!isValidEmail(email)) {
+        showError('Please enter a valid email address');
         return;
     }
+    
+    const domain = extractDomain(email);
 
     hideAll();
     loadingIndicator.classList.remove('hidden');
@@ -35,11 +37,13 @@ async function handleCheck() {
         const spfResult = await checkSPF(domain);
         const dkimResults = await checkDKIM(domain);
         const dmarcResult = await checkDMARC(domain);
+        
+        const score = calculateScore(spfResult, dkimResults, dmarcResult);
 
-        displayResults(spfResult, dkimResults, dmarcResult);
+        displayResults(spfResult, dkimResults, dmarcResult, score);
         
         // Log to backend (non-blocking)
-        logToBackend(domain, { spf: spfResult, dkim: dkimResults, dmarc: dmarcResult }).catch(() => {
+        logToBackend(email, domain, { spf: spfResult, dkim: dkimResults, dmarc: dmarcResult }, score).catch(() => {
             // Silently fail - logging shouldn't break the user experience
         });
     } catch (error) {
@@ -50,9 +54,33 @@ async function handleCheck() {
     }
 }
 
-function isValidDomain(domain) {
-    const domainRegex = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/;
-    return domainRegex.test(domain);
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+function extractDomain(email) {
+    return email.split('@')[1];
+}
+
+function calculateScore(spfResult, dkimResults, dmarcResult) {
+    let score = 0;
+    
+    // SPF: 40 points
+    if (spfResult.hasExactlyOne) {
+        score += 40;
+    }
+    
+    // DKIM: 40 points (8 points per selector)
+    const dkimCount = Object.values(dkimResults).filter(Boolean).length;
+    score += dkimCount * 8;
+    
+    // DMARC: 20 points
+    if (dmarcResult.exists) {
+        score += 20;
+    }
+    
+    return score;
 }
 
 async function queryDNS(name, type) {
@@ -166,41 +194,59 @@ async function checkDMARC(domain) {
     }
 }
 
-function displayResults(spfResult, dkimResults, dmarcResult) {
-    document.getElementById('spfExists').textContent = spfResult.hasExactlyOne ? 'Yes' : 'No';
+function displayResults(spfResult, dkimResults, dmarcResult, score) {
+    // Store results globally for email function
+    window.lastCheckResults = {
+        email: emailInput.value.trim().toLowerCase(),
+        domain: extractDomain(emailInput.value.trim().toLowerCase()),
+        score,
+        spf: spfResult,
+        dkim: dkimResults,
+        dmarc: dmarcResult
+    };
+    
+    // Update score display
+    document.getElementById('scoreValue').textContent = score;
+    document.getElementById('scorePercentage').textContent = `${score}%`;
+    updateScoreCircle(score);
+    
+    document.getElementById('spfExists').innerHTML = spfResult.hasExactlyOne ? '<span class="icon-check">✓</span>' : '<span class="icon-cross">✗</span>';
     document.getElementById('spfExists').className = `status ${spfResult.hasExactlyOne ? 'yes' : 'no'}`;
 
     const spfMechanismsSection = document.getElementById('spfMechanismsSection');
+    const spfRecordSection = document.getElementById('spfRecordSection');
     if (spfResult.exists && spfResult.record) {
         spfMechanismsSection.classList.remove('hidden');
+        spfRecordSection.classList.remove('hidden');
         
-        document.getElementById('spfBullhorn').textContent = spfResult.hasBullhorn ? 'Present' : 'Missing';
+        document.getElementById('spfBullhorn').innerHTML = spfResult.hasBullhorn ? '<span class=\"icon-check\">✓</span>' : '<span class=\"icon-cross\">✗</span>';
         document.getElementById('spfBullhorn').className = `status ${spfResult.hasBullhorn ? 'present' : 'missing'}`;
         
-        document.getElementById('spfSendgrid').textContent = spfResult.hasSendgrid ? 'Present' : 'Missing';
+        document.getElementById('spfSendgrid').innerHTML = spfResult.hasSendgrid ? '<span class=\"icon-check\">✓</span>' : '<span class=\"icon-cross\">✗</span>';
         document.getElementById('spfSendgrid').className = `status ${spfResult.hasSendgrid ? 'present' : 'missing'}`;
         
         document.getElementById('spfRecord').textContent = spfResult.record;
     } else {
         spfMechanismsSection.classList.add('hidden');
+        spfRecordSection.classList.add('hidden');
     }
 
-    document.getElementById('dkimBh').textContent = dkimResults.bh ? 'Exists' : 'Missing';
+    document.getElementById('dkimBh').innerHTML = dkimResults.bh ? '<span class="icon-check">✓</span>' : '<span class="icon-cross">✗</span>';
     document.getElementById('dkimBh').className = `status ${dkimResults.bh ? 'exists' : 'missing'}`;
     
-    document.getElementById('dkimBa').textContent = dkimResults.ba ? 'Exists' : 'Missing';
+    document.getElementById('dkimBa').innerHTML = dkimResults.ba ? '<span class="icon-check">✓</span>' : '<span class="icon-cross">✗</span>';
     document.getElementById('dkimBa').className = `status ${dkimResults.ba ? 'exists' : 'missing'}`;
     
-    document.getElementById('dkimBa2').textContent = dkimResults.ba2 ? 'Exists' : 'Missing';
+    document.getElementById('dkimBa2').innerHTML = dkimResults.ba2 ? '<span class="icon-check">✓</span>' : '<span class="icon-cross">✗</span>';
     document.getElementById('dkimBa2').className = `status ${dkimResults.ba2 ? 'exists' : 'missing'}`;
     
-    document.getElementById('dkimHf').textContent = dkimResults.hf ? 'Exists' : 'Missing';
+    document.getElementById('dkimHf').innerHTML = dkimResults.hf ? '<span class="icon-check">✓</span>' : '<span class="icon-cross">✗</span>';
     document.getElementById('dkimHf').className = `status ${dkimResults.hf ? 'exists' : 'missing'}`;
     
-    document.getElementById('dkimHf2').textContent = dkimResults.hf2 ? 'Exists' : 'Missing';
+    document.getElementById('dkimHf2').innerHTML = dkimResults.hf2 ? '<span class="icon-check">✓</span>' : '<span class="icon-cross">✗</span>';
     document.getElementById('dkimHf2').className = `status ${dkimResults.hf2 ? 'exists' : 'missing'}`;
 
-    document.getElementById('dmarcExists').textContent = dmarcResult.exists ? 'Yes' : 'No';
+    document.getElementById('dmarcExists').innerHTML = dmarcResult.exists ? '<span class="icon-check">✓</span>' : '<span class="icon-cross">✗</span>';
     document.getElementById('dmarcExists').className = `status ${dmarcResult.exists ? 'yes' : 'no'}`;
 
     const dmarcPolicySection = document.getElementById('dmarcPolicySection');
@@ -215,6 +261,22 @@ function displayResults(spfResult, dkimResults, dmarcResult) {
     results.classList.remove('hidden');
 }
 
+function updateScoreCircle(score) {
+    const circle = document.getElementById('scoreCircle');
+    const circumference = 2 * Math.PI * 54; // radius is 54
+    const offset = circumference - (score / 100) * circumference;
+    circle.style.strokeDashoffset = offset;
+    
+    // Change color based on score
+    if (score >= 80) {
+        circle.style.stroke = '#27AE60';
+    } else if (score >= 50) {
+        circle.style.stroke = '#F39C12';
+    } else {
+        circle.style.stroke = '#E74C3C';
+    }
+}
+
 function showError(message) {
     hideAll();
     errorMessage.textContent = message;
@@ -222,15 +284,15 @@ function showError(message) {
 }
 
 
-async function logToBackend(domain, results) {
+async function logToBackend(email, domain, results, score) {
     try {
-        console.log('Sending to backend:', { domain, results });
+        console.log('Sending to backend:', { email, domain, results, score });
         const response = await fetch(`${BACKEND_API}/log`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ domain, results })
+            body: JSON.stringify({ email, domain, results, score })
         });
         const responseData = await response.json();
         console.log('Backend response:', responseData);
@@ -326,37 +388,37 @@ async function loadDashboard() {
                 const dkimBa2 = Boolean(check.dkim_ba2);
                 const dkimHf = Boolean(check.dkim_hf);
                 const dkimHf2 = Boolean(check.dkim_hf2);
+                const score = check.score || 0;
                 
                 return `
                 <div class="check-item-detailed">
                     <div class="check-header">
-                        <span class="check-domain">${escapeHtml(check.domain)}</span>
+                        <span class="check-domain">${escapeHtml(check.email)}</span>
+                        <div class="score-badge score-${getScoreClass(score)}">${score}%</div>
                         <span class="check-time">${formatTimestamp(check.timestamp)}</span>
                     </div>
                     <div class="check-results">
                         <div class="result-grid">
                             <div class="result-box">
                                 <span class="result-label">SPF Record</span>
-                                <span class="result-value ${spfExists ? 'success' : 'fail'}">${spfExists ? 'Yes' : 'No'}</span>
+                                <span class="result-value ${spfExists ? 'success' : 'fail'}">${spfExists ? '✓' : '✗'}</span>
                             </div>
                             <div class="result-box">
                                 <span class="result-label">DMARC Record</span>
-                                <span class="result-value ${dmarcExists ? 'success' : 'fail'}">${dmarcExists ? 'Yes' : 'No'}</span>
+                                <span class="result-value ${dmarcExists ? 'success' : 'fail'}">${dmarcExists ? '✓' : '✗'}</span>
                                 ${check.dmarc_policy ? `<span class="result-detail">${escapeHtml(check.dmarc_policy)}</span>` : ''}
                             </div>
                         </div>
                         <div class="dkim-section">
                             <span class="result-label">DKIM Selectors</span>
                             <div class="dkim-grid">
-                                <span class="dkim-item ${dkimBh ? 'success' : 'fail'}">bh: ${dkimBh ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${dkimBa ? 'success' : 'fail'}">ba: ${dkimBa ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${dkimBa2 ? 'success' : 'fail'}">ba2: ${dkimBa2 ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${dkimHf ? 'success' : 'fail'}">hf: ${dkimHf ? 'Present' : 'Missing'}</span>
-                                <span class="dkim-item ${dkimHf2 ? 'success' : 'fail'}">hf2: ${dkimHf2 ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${dkimBh ? 'success' : 'fail'}">bh: ${dkimBh ? '✓' : '✗'}</span>
+                                <span class="dkim-item ${dkimBa ? 'success' : 'fail'}">ba: ${dkimBa ? '✓' : '✗'}</span>
+                                <span class="dkim-item ${dkimBa2 ? 'success' : 'fail'}">ba2: ${dkimBa2 ? '✓' : '✗'}</span>
+                                <span class="dkim-item ${dkimHf ? 'success' : 'fail'}">hf: ${dkimHf ? '✓' : '✗'}</span>
+                                <span class="dkim-item ${dkimHf2 ? 'success' : 'fail'}">hf2: ${dkimHf2 ? '✓' : '✗'}</span>
                             </div>
                         </div>
-                        ${check.spf_record ? `<div class="spf-record-display"><strong>SPF Record:</strong><br><code class="small-code">${escapeHtml(check.spf_record)}</code></div>` : ''}
-                        ${check.ip_address && check.ip_address !== 'unknown' ? `<div class="ip-display"><strong>Checked from IP:</strong> ${escapeHtml(check.ip_address)}</div>` : ''}
                     </div>
                 </div>
                 `;
@@ -400,6 +462,64 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+function getScoreClass(score) {
+    if (score >= 80) return 'high';
+    if (score >= 50) return 'medium';
+    return 'low';
+}
+
+function emailResults() {
+    if (!window.lastCheckResults) return;
+    
+    const { email, domain, score, spf, dkim, dmarc } = window.lastCheckResults;
+    
+    const subject = `DNS Email Authentication Report for ${email}`;
+    
+    const body = `DNS Email Authentication Check Results
+=====================================
+
+Email Checked: ${email}
+Domain: ${domain}
+Overall Security Score: ${score}%
+
+📊 RESULTS SUMMARY
+------------------
+
+SPF Record:
+${spf.hasExactlyOne ? '✓ Valid SPF record found' : '✗ No valid SPF record'}
+${spf.hasBullhorn ? '✓ Bullhorn configured' : '✗ Bullhorn not configured'}
+${spf.hasSendgrid ? '✓ Sendgrid configured' : '✗ Sendgrid not configured'}
+
+DKIM Selectors:
+${dkim.bh ? '✓' : '✗'} bh._domainkey
+${dkim.ba ? '✓' : '✗'} ba._domainkey
+${dkim.ba2 ? '✓' : '✗'} ba2._domainkey
+${dkim.hf ? '✓' : '✗'} hf._domainkey
+${dkim.hf2 ? '✓' : '✗'} hf2._domainkey
+
+DMARC Record:
+${dmarc.exists ? '✓ DMARC record found' : '✗ No DMARC record found'}
+${dmarc.policy ? `Policy: p=${dmarc.policy}` : ''}
+
+${spf.record ? `\nFull SPF Record:\n${spf.record}` : ''}
+
+------------------
+Generated by RE:STACK DNS Email Authentication Checker
+${window.location.href}`;
+    
+    const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
+}
+
+// Add event listener for email button
+document.addEventListener('DOMContentLoaded', () => {
+    const emailButton = document.getElementById('emailResultsButton');
+    if (emailButton) {
+        emailButton.addEventListener('click', emailResults);
+    }
+});
+
 function hideAll() {
     loadingIndicator.classList.add('hidden');
     errorMessage.classList.add('hidden');

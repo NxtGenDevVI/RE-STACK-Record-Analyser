@@ -31,9 +31,9 @@ export default {
 async function handleLog(request, env, corsHeaders) {
   try {
     const data = await request.json();
-    const { domain, results } = data;
+    const { email, domain, results, score } = data;
 
-    if (!domain || !results) {
+    if (!email || !domain || !results) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: corsHeaders
@@ -45,9 +45,10 @@ async function handleLog(request, env, corsHeaders) {
     const userAgent = request.headers.get('User-Agent') || 'unknown';
 
     await env.DB.prepare(
-      `INSERT INTO audit_log (domain, timestamp, ip_address, user_agent, spf_exists, spf_record, dkim_bh, dkim_ba, dkim_ba2, dkim_hf, dkim_hf2, dmarc_exists, dmarc_policy)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO audit_log (email, domain, timestamp, ip_address, user_agent, spf_exists, spf_record, dkim_bh, dkim_ba, dkim_ba2, dkim_hf, dkim_hf2, dmarc_exists, dmarc_policy, score)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
+      email,
       domain,
       timestamp,
       ipAddress,
@@ -60,7 +61,8 @@ async function handleLog(request, env, corsHeaders) {
       results.dkim?.hf ? 1 : 0,
       results.dkim?.hf2 ? 1 : 0,
       results.dmarc?.exists ? 1 : 0,
-      results.dmarc?.policy || null
+      results.dmarc?.policy || null,
+      score || 0
     ).run();
 
     return new Response(JSON.stringify({ success: true }), {
@@ -86,9 +88,9 @@ async function handleStats(request, env, corsHeaders) {
     ).all();
 
     const recentChecks = await env.DB.prepare(
-      `SELECT domain, timestamp, spf_exists, spf_record, 
+      `SELECT email, domain, timestamp, spf_exists, spf_record, 
               dkim_bh, dkim_ba, dkim_ba2, dkim_hf, dkim_hf2, 
-              dmarc_exists, dmarc_policy, ip_address
+              dmarc_exists, dmarc_policy, ip_address, score
        FROM audit_log 
        ORDER BY timestamp DESC 
        LIMIT 20`
