@@ -322,23 +322,29 @@ async function loadDashboard() {
                         <span class="check-time">${formatTimestamp(check.timestamp)}</span>
                     </div>
                     <div class="check-results">
-                        <div class="result-row">
-                            <strong>SPF:</strong> ${check.spf_exists ? '✓ Yes' : '✗ No'}
-                            ${check.spf_record ? `<br><code class="small-code">${escapeHtml(check.spf_record)}</code>` : ''}
+                        <div class="result-grid">
+                            <div class="result-box">
+                                <span class="result-label">SPF Record</span>
+                                <span class="result-value ${check.spf_exists ? 'success' : 'fail'}">${check.spf_exists ? 'Yes' : 'No'}</span>
+                            </div>
+                            <div class="result-box">
+                                <span class="result-label">DMARC Record</span>
+                                <span class="result-value ${check.dmarc_exists ? 'success' : 'fail'}">${check.dmarc_exists ? 'Yes' : 'No'}</span>
+                                ${check.dmarc_policy ? `<span class="result-detail">${check.dmarc_policy}</span>` : ''}
+                            </div>
                         </div>
-                        <div class="result-row">
-                            <strong>DKIM:</strong> 
-                            bh:${check.dkim_bh ? '✓' : '✗'} 
-                            ba:${check.dkim_ba ? '✓' : '✗'} 
-                            ba2:${check.dkim_ba2 ? '✓' : '✗'} 
-                            hf:${check.dkim_hf ? '✓' : '✗'} 
-                            hf2:${check.dkim_hf2 ? '✓' : '✗'}
+                        <div class="dkim-section">
+                            <span class="result-label">DKIM Selectors</span>
+                            <div class="dkim-grid">
+                                <span class="dkim-item ${check.dkim_bh ? 'success' : 'fail'}">bh: ${check.dkim_bh ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${check.dkim_ba ? 'success' : 'fail'}">ba: ${check.dkim_ba ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${check.dkim_ba2 ? 'success' : 'fail'}">ba2: ${check.dkim_ba2 ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${check.dkim_hf ? 'success' : 'fail'}">hf: ${check.dkim_hf ? 'Present' : 'Missing'}</span>
+                                <span class="dkim-item ${check.dkim_hf2 ? 'success' : 'fail'}">hf2: ${check.dkim_hf2 ? 'Present' : 'Missing'}</span>
+                            </div>
                         </div>
-                        <div class="result-row">
-                            <strong>DMARC:</strong> ${check.dmarc_exists ? '✓ Yes' : '✗ No'}
-                            ${check.dmarc_policy ? ` (${check.dmarc_policy})` : ''}
-                        </div>
-                        ${check.ip_address ? `<div class="result-row"><strong>IP:</strong> ${escapeHtml(check.ip_address)}</div>` : ''}
+                        ${check.spf_record ? `<div class="spf-record-display"><strong>SPF Record:</strong><br><code class="small-code">${escapeHtml(check.spf_record)}</code></div>` : ''}
+                        ${check.ip_address ? `<div class="ip-display"><strong>Checked from IP:</strong> ${escapeHtml(check.ip_address)}</div>` : ''}
                     </div>
                 </div>
             `).join('');
