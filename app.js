@@ -206,7 +206,6 @@ function displayResults(spfResult, dkimResults, dmarcResult, score) {
     };
     
     // Update score display
-    document.getElementById('scoreValue').textContent = score;
     document.getElementById('scorePercentage').textContent = `${score}%`;
     updateScoreCircle(score);
     
