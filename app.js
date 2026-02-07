@@ -365,12 +365,16 @@ async function loadDashboard() {
         const response = await fetch(`${BACKEND_API}/stats`);
         
         if (!response.ok) {
-            throw new Error('Failed to fetch stats');
+            const errorText = await response.text();
+            console.error('Response not OK:', response.status, errorText);
+            throw new Error(`Failed to fetch stats: ${response.status}`);
         }
         
         const data = await response.json();
         console.log('Dashboard data received:', data);
-        console.log('First check record:', data.recentChecks[0]);
+        if (data.recentChecks && data.recentChecks.length > 0) {
+            console.log('First check record:', data.recentChecks[0]);
+        }
         
         // Update total checks
         document.getElementById('totalChecks').textContent = data.totalChecks || 0;
