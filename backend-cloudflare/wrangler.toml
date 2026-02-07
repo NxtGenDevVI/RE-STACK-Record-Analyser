@@ -5,4 +5,4 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "dns-checker-db"
-database_id = "YOUR_DATABASE_ID"
+database_id = "efe541a7-6024-496d-94b0-ae0a1a3821f1"

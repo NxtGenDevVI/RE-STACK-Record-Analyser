@@ -1,4 +1,6 @@
 const CLOUDFLARE_DNS_API = 'https://cloudflare-dns.com/dns-query';
+// TODO: Replace with your actual Worker URL after deployment
+const BACKEND_API = 'https://dns-checker-api.YOUR-SUBDOMAIN.workers.dev';
 
 const domainInput = document.getElementById('domainInput');
 const checkButton = document.getElementById('checkButton');
@@ -36,6 +38,11 @@ async function handleCheck() {
         const dmarcResult = await checkDMARC(domain);
 
         displayResults(spfResult, dkimResults, dmarcResult);
+        
+        // Log to backend (non-blocking)
+        logToBackend(domain, { spf: spfResult, dkim: dkimResults, dmarc: dmarcResult }).catch(() => {
+            // Silently fail - logging shouldn't break the user experience
+        });
     } catch (error) {
         showError(`Error checking DNS records: ${error.message}`);
     } finally {
@@ -215,6 +222,137 @@ function showError(message) {
     errorMessage.classList.remove('hidden');
 }
 
+
+async function logToBackend(domain, results) {
+    try {
+        await fetch(`${BACKEND_API}/log`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ domain, results })
+        });
+    } catch (error) {
+        console.error('Failed to log to backend:', error);
+    }
+}
+
+// Admin Portal Functionality
+const adminButton = document.getElementById('adminButton');
+const adminModal = document.getElementById('adminModal');
+const closeAdmin = document.getElementById('closeAdmin');
+const pinSection = document.getElementById('pinSection');
+const pinInput = document.getElementById('pinInput');
+const pinSubmit = document.getElementById('pinSubmit');
+const pinError = document.getElementById('pinError');
+const dashboardSection = document.getElementById('dashboardSection');
+
+const ADMIN_PIN = '1501';
+
+adminButton.addEventListener('click', () => {
+    adminModal.classList.remove('hidden');
+    pinInput.value = '';
+    pinError.classList.add('hidden');
+    pinInput.focus();
+});
+
+closeAdmin.addEventListener('click', () => {
+    adminModal.classList.add('hidden');
+    pinSection.classList.remove('hidden');
+    dashboardSection.classList.add('hidden');
+});
+
+adminModal.addEventListener('click', (e) => {
+    if (e.target === adminModal) {
+        adminModal.classList.add('hidden');
+        pinSection.classList.remove('hidden');
+        dashboardSection.classList.add('hidden');
+    }
+});
+
+pinSubmit.addEventListener('click', verifyPin);
+pinInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        verifyPin();
+    }
+});
+
+function verifyPin() {
+    const enteredPin = pinInput.value.trim();
+    
+    if (enteredPin === ADMIN_PIN) {
+        pinError.classList.add('hidden');
+        pinSection.classList.add('hidden');
+        dashboardSection.classList.remove('hidden');
+        loadDashboard();
+    } else {
+        pinError.classList.remove('hidden');
+        pinInput.value = '';
+        pinInput.focus();
+    }
+}
+
+async function loadDashboard() {
+    try {
+        const response = await fetch(`${BACKEND_API}/stats`);
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch stats');
+        }
+        
+        const data = await response.json();
+        
+        // Update total checks
+        document.getElementById('totalChecks').textContent = data.totalChecks || 0;
+        
+        // Update recent checks
+        const recentChecksList = document.getElementById('recentChecksList');
+        if (data.recentChecks && data.recentChecks.length > 0) {
+            recentChecksList.innerHTML = data.recentChecks.map(check => `
+                <div class="check-item">
+                    <span class="check-domain">${escapeHtml(check.domain)}</span>
+                    <span class="check-time">${formatTimestamp(check.timestamp)}</span>
+                </div>
+            `).join('');
+        } else {
+            recentChecksList.innerHTML = '<p>No checks yet</p>';
+        }
+        
+        // Update top domains
+        const topDomainsList = document.getElementById('topDomainsList');
+        if (data.topDomains && data.topDomains.length > 0) {
+            topDomainsList.innerHTML = data.topDomains.map(item => `
+                <div class="domain-item">
+                    <span class="domain-name">${escapeHtml(item.domain)}</span>
+                    <span class="domain-count">${item.count}</span>
+                </div>
+            `).join('');
+        } else {
+            topDomainsList.innerHTML = '<p>No data yet</p>';
+        }
+    } catch (error) {
+        console.error('Failed to load dashboard:', error);
+        document.getElementById('recentChecksList').innerHTML = '<p>Error loading data</p>';
+        document.getElementById('topDomainsList').innerHTML = '<p>Error loading data</p>';
+    }
+}
+
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 function hideAll() {
     loadingIndicator.classList.add('hidden');
     errorMessage.classList.add('hidden');

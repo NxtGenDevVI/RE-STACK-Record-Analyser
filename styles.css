@@ -264,6 +264,26 @@ footer {
     margin-top: 40px;
     color: var(--secondary-color);
     font-size: 14px;
+    position: relative;
+}
+
+.admin-button {
+    position: absolute;
+    right: 20px;
+    bottom: 30px;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--medium-gray);
+    background: transparent;
+    border: 1px solid var(--medium-gray);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.admin-button:hover {
+    color: var(--accent-color);
+    border-color: var(--accent-color);
 }
 
 @media (min-width: 768px) {
@@ -283,6 +303,172 @@ footer {
         width: auto;
         min-width: 200px;
     }
+}
+
+/* Admin Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: var(--card-background);
+    padding: 40px;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.close-button {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 32px;
+    color: var(--secondary-color);
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.close-button:hover {
+    color: var(--primary-color);
+}
+
+.admin-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    font-size: 28px;
+}
+
+#pinSection {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+#pinInput {
+    width: 200px;
+    padding: 16px;
+    font-size: 24px;
+    text-align: center;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    letter-spacing: 8px;
+}
+
+#pinInput:focus {
+    border-color: var(--accent-color);
+    outline: none;
+}
+
+#pinSubmit {
+    padding: 12px 40px;
+    font-size: 18px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#pinSubmit:hover {
+    background-color: #2980b9;
+}
+
+.pin-error {
+    color: var(--error-color);
+    margin-top: 10px;
+    font-weight: 500;
+}
+
+.stats-overview {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background-color: var(--light-gray);
+    padding: 30px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.stat-card h3 {
+    font-size: 16px;
+    color: var(--secondary-color);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-number {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin: 0;
+}
+
+.stats-section {
+    margin-bottom: 30px;
+}
+
+.stats-section h3 {
+    font-size: 20px;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.checks-list, .domains-list {
+    background-color: var(--light-gray);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.check-item, .domain-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.check-item:last-child, .domain-item:last-child {
+    border-bottom: none;
+}
+
+.check-domain, .domain-name {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.check-time {
+    color: var(--secondary-color);
+    font-size: 14px;
+}
+
+.domain-count {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
 }
 
 @media (max-width: 767px) {
@@ -307,5 +493,20 @@ footer {
     .status {
         width: 100%;
         text-align: center;
+    }
+    
+    .admin-button {
+        position: static;
+        margin-top: 20px;
+    }
+    
+    .modal-content {
+        padding: 20px;
+    }
+    
+    .check-item, .domain-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
     }
 }

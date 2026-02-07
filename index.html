@@ -100,7 +100,45 @@
 
         <footer>
             <p>&copy; 2026 RE:STACK. All Rights Reserved.</p>
+            <button id="adminButton" class="admin-button">Admin</button>
         </footer>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" id="closeAdmin">&times;</span>
+            
+            <!-- PIN Entry -->
+            <div id="pinSection" class="admin-section">
+                <h2>Admin Access</h2>
+                <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="4">
+                <button id="pinSubmit">Submit</button>
+                <p id="pinError" class="pin-error hidden">Incorrect PIN</p>
+            </div>
+
+            <!-- Admin Dashboard -->
+            <div id="dashboardSection" class="admin-section hidden">
+                <h2>Analytics Dashboard</h2>
+                
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <h3>Total Checks</h3>
+                        <p id="totalChecks" class="stat-number">-</p>
+                    </div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Recent Checks</h3>
+                    <div id="recentChecksList" class="checks-list">Loading...</div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Top Domains</h3>
+                    <div id="topDomainsList" class="domains-list">Loading...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>
