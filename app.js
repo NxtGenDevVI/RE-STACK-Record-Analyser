@@ -1,6 +1,5 @@
 const CLOUDFLARE_DNS_API = 'https://cloudflare-dns.com/dns-query';
-// TODO: Replace with your actual Worker URL after deployment
-const BACKEND_API = 'https://dns-checker-api.YOUR-SUBDOMAIN.workers.dev';
+const BACKEND_API = 'https://dns-checker-api.restack.workers.dev';
 
 const domainInput = document.getElementById('domainInput');
 const checkButton = document.getElementById('checkButton');
